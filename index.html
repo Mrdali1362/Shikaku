@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Shikaku</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #F7F8F2;
+  --ink: #1A1A2E;
+  --ink-light: #5A5F7A;
+  --grid-line: #C8CDD8;
+  --accent: #4A6FA5;
+  --accent-light: #EAF0FA;
+  --danger: #C0392B;
+  --success: #27AE60;
+  --bar-h: 56px;
+  --bottom-h: 72px;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  touch-action: none;
+}
+
+/* ── Top bar ── */
+.topbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--bar-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: var(--bg);
+  border-bottom: 1.5px solid var(--grid-line);
+  z-index: 20;
+}
+
+.logo {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+.logo span { color: var(--accent); }
+
+.mode-tabs {
+  display: flex;
+  gap: 3px;
+  background: var(--grid-line);
+  padding: 3px;
+  border-radius: 8px;
+}
+.mode-tab {
+  padding: 6px 16px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-light);
+  transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.mode-tab.active {
+  background: white;
+  color: var(--ink);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+}
+
+.topbar-right { display: flex; gap: 8px; }
+
+.icon-btn {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  border: 1.5px solid var(--grid-line);
+  background: white;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  -webkit-tap-highlight-color: transparent;
+  transition: all 0.15s;
+}
+.icon-btn:active { background: var(--accent-light); border-color: var(--accent); }
+
+/* ── Canvas area ── */
+.canvas-area {
+  position: fixed;
+  top: var(--bar-h);
+  left: 0; right: 0;
+  bottom: var(--bottom-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  overflow: hidden;
+  transition: background 0.25s;
+}
+.canvas-area.dark { background: #1C1E24; }
+
+canvas {
+  display: block;
+  border: 2px solid #EDEEF2;
+  border-radius: 12px;
+  touch-action: none;
+  transition: border-color 0.25s;
+}
+canvas.dark { border-color: #1C1E24; }
+
+/* Dark top/bottom bars in play mode */
+.topbar.dark { background: #1C1E24; border-bottom-color: #2A2D35; }
+.topbar.dark .logo { color: #F0F0F0; }
+.topbar.dark .mode-tabs { background: #2A2D35; }
+.topbar.dark .mode-tab { color: #888; }
+.topbar.dark .mode-tab.active { background: #3A3D47; color: #F0F0F0; }
+.bottom-bar.dark { background: #1C1E24; border-top-color: #2A2D35; }
+.bottom-bar.dark .btn-ghost { background: #2A2D35; color: #aaa; border-color: #3A3D47; }
+.bottom-bar.dark .btn-undo  { background: #2A2D35; color: #ccc; border-color: #3A3D47; }
+
+/* ── Status bar (play mode) ── */
+.status-bar {
+  position: fixed;
+  top: calc(var(--bar-h) + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 7px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  z-index: 10;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.status-bar.show { opacity: 1; }
+.status-bar.incomplete { background: #FEF9E7; border: 1px solid #F9E79F; color: #7D6608; }
+.status-bar.complete   { background: #EAFAF1; border: 1px solid #A9DFBF; color: #196F3D; }
+.status-bar.wrong      { background: #FDEDEC; border: 1px solid #F1948A; color: #922B21; }
+
+/* ── Coverage bar (design mode) ── */
+.coverage-bar {
+  position: fixed;
+  top: calc(var(--bar-h) + 8px);
+  left: 16px; right: 16px;
+  z-index: 10;
+}
+.coverage-track {
+  height: 4px;
+  background: var(--grid-line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.coverage-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 4px;
+  transition: width 0.2s;
+}
+.coverage-label {
+  font-size: 11px;
+  color: var(--ink-light);
+  margin-top: 4px;
+  text-align: center;
+}
+
+/* ── Bottom toolbar ── */
+.bottom-bar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: var(--bottom-h);
+  background: white;
+  border-top: 1.5px solid var(--grid-line);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 8px;
+  z-index: 20;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.btn {
+  flex: 1;
+  height: 44px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--accent); color: white; }
+.btn-ghost   { background: var(--bg); color: var(--ink-light); border: 1.5px solid var(--grid-line); }
+.btn-undo    { background: var(--bg); color: var(--ink); border: 1.5px solid var(--grid-line); flex: 0 0 44px; font-size: 18px; }
+
+/* ── Sheet overlay (settings / share) ── */
+.sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 40;
+  display: none;
+  align-items: flex-end;
+}
+.sheet-overlay.open { display: flex; }
+
+.sheet {
+  width: 100%;
+  background: white;
+  border-radius: 20px 20px 0 0;
+  padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.sheet-handle {
+  width: 40px; height: 4px;
+  background: var(--grid-line);
+  border-radius: 4px;
+  margin: 0 auto 4px;
+}
+.sheet h2 {
+  font-size: 16px;
+  font-weight: 600;
+}
+.sheet-section h3 {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-light);
+  margin-bottom: 10px;
+}
+
+.size-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.size-row label { font-size: 13px; color: var(--ink-light); width: 20px; }
+.size-row input[type=range] { flex: 1; accent-color: var(--accent); height: 4px; }
+.size-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px; font-weight: 600;
+  width: 28px; text-align: right;
+}
+
+.share-url {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid var(--grid-line);
+  border-radius: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--ink-light);
+  background: var(--bg);
+  resize: none;
+  height: 56px;
+}
+
+.sheet-btns { display: flex; gap: 8px; }
+.sheet-btn {
+  flex: 1;
+  height: 48px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  -webkit-tap-highlight-color: transparent;
+}
+.sheet-btn:active { transform: scale(0.97); }
+.sheet-btn-primary { background: var(--accent); color: white; }
+.sheet-btn-ghost   { background: var(--bg); color: var(--ink-light); border: 1.5px solid var(--grid-line); }
+
+/* ── Toast ── */
+.toast {
+  position: fixed;
+  bottom: calc(var(--bottom-h) + 12px);
+  left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  background: var(--ink);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  opacity: 0;
+  transition: all 0.2s;
+  pointer-events: none;
+  z-index: 50;
+  white-space: nowrap;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div class="logo">shi<span>kaku</span></div>
+  <div class="mode-tabs">
+    <button class="mode-tab active" id="tab-design" onclick="setMode('design')">Design</button>
+    <button class="mode-tab" id="tab-play" onclick="setMode('play')">Play</button>
+  </div>
+  <div class="topbar-right">
+    <button class="icon-btn" id="settings-btn" onclick="openSettings()" title="Settings">⚙️</button>
+  </div>
+</div>
+
+<!-- Coverage bar (design) -->
+<div class="coverage-bar" id="coverage-bar">
+  <div class="coverage-track"><div class="coverage-fill" id="coverage-fill" style="width:0%"></div></div>
+  <div class="coverage-label" id="coverage-label">0 / 64 cells covered</div>
+</div>
+
+<!-- Status pill (play) -->
+<div class="status-bar incomplete" id="play-status">Draw rectangles to solve</div>
+
+<!-- Canvas -->
+<div class="canvas-area">
+  <canvas id="grid"></canvas>
+</div>
+
+<!-- Bottom bar -->
+<div class="bottom-bar" id="bottom-bar">
+  <!-- Design mode -->
+  <div id="design-actions" style="display:flex;gap:8px;width:100%;align-items:center;">
+    <button class="btn btn-undo" onclick="undoLast()" title="Undo">↩</button>
+    <button class="btn btn-ghost" onclick="clearAll()">Clear</button>
+    <button class="btn btn-primary" onclick="sharePuzzle()">Share →</button>
+  </div>
+  <!-- Play mode -->
+  <div id="play-actions" style="display:none;gap:8px;width:100%;align-items:center;">
+    <button class="btn btn-undo" onclick="undoPlay()" title="Undo">↩</button>
+    <button class="btn btn-ghost" onclick="clearPlay()">Reset</button>
+  </div>
+</div>
+
+<!-- Settings sheet -->
+<div class="sheet-overlay" id="settings-sheet" onclick="closeSettings(event)">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="sheet-handle"></div>
+    <h2>Grid size</h2>
+    <div class="sheet-section">
+      <div class="size-row">
+        <label>W</label>
+        <input type="range" id="cols-slider" min="5" max="15" value="8" oninput="document.getElementById('cols-val').textContent=this.value">
+        <span class="size-val" id="cols-val">8</span>
+      </div>
+      <div class="size-row">
+        <label>H</label>
+        <input type="range" id="rows-slider" min="5" max="15" value="8" oninput="document.getElementById('rows-val').textContent=this.value">
+        <span class="size-val" id="rows-val">8</span>
+      </div>
+    </div>
+    <div class="sheet-btns">
+      <button class="sheet-btn sheet-btn-ghost" onclick="closeSettings()">Cancel</button>
+      <button class="sheet-btn sheet-btn-primary" onclick="applySize()">Apply</button>
+    </div>
+  </div>
+</div>
+
+<!-- Share sheet -->
+<div class="sheet-overlay" id="share-sheet" onclick="closeShare(event)">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="sheet-handle"></div>
+    <h2>Share puzzle</h2>
+    <textarea class="share-url" id="share-url" readonly></textarea>
+    <div class="sheet-btns">
+      <button class="sheet-btn sheet-btn-ghost" onclick="closeShare()">Close</button>
+      <button class="sheet-btn sheet-btn-primary" onclick="copyLink()">Copy link</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────────
+let COLS = 8, ROWS = 8;
+let CELL = 44; // computed dynamically
+
+const COLORS = [
+  '#B5D5F5','#B5E8C8','#F5D7B5','#E8B5D5','#D5E8B5',
+  '#F5EEB5','#C8B5F5','#B5F0F5','#F5B5B5','#B5C8F5',
+  '#D4EED4','#F5D5E8','#EED4B5','#D5D4EE','#B5EED4',
+];
+
+let mode = 'design';
+let designRects = [];
+let playRects = [];
+let puzzle = null;
+let drag = null;
+
+// ── Canvas setup ───────────────────────────────────────────────────────────────
+const canvas = document.getElementById('grid');
+const ctx = canvas.getContext('2d');
+
+function computeCell() {
+  const topH = 56, botH = 72, pad = 24;
+  const availW = window.innerWidth - pad;
+  const availH = window.innerHeight - topH - botH - 28; // 28 for coverage bar
+  CELL = Math.floor(Math.min(availW / COLS, availH / ROWS));
+  CELL = Math.max(24, Math.min(CELL, 52));
+}
+
+function resize() {
+  computeCell();
+  canvas.width  = COLS * CELL;
+  canvas.height = ROWS * CELL;
+  draw();
+}
+
+window.addEventListener('resize', resize);
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function cellAt(x, y) {
+  return { c: Math.floor(x / CELL), r: Math.floor(y / CELL) };
+}
+
+function rectCoords(rect) {
+  return {
+    r1: Math.min(rect.r1, rect.r2), r2: Math.max(rect.r1, rect.r2),
+    c1: Math.min(rect.c1, rect.c2), c2: Math.max(rect.c1, rect.c2),
+  };
+}
+
+function rectArea(rect) {
+  const { r1, c1, r2, c2 } = rectCoords(rect);
+  return (r2 - r1 + 1) * (c2 - c1 + 1);
+}
+
+function overlaps(newRect, existing) {
+  const { r1: nr1, c1: nc1, r2: nr2, c2: nc2 } = rectCoords(newRect);
+  for (const ex of existing) {
+    const { r1, c1, r2, c2 } = rectCoords(ex);
+    if (nr1 <= r2 && nr2 >= r1 && nc1 <= c2 && nc2 >= c1) return true;
+  }
+  return false;
+}
+
+// ── Draw ───────────────────────────────────────────────────────────────────────
+const PLAY_BG       = '#1C1E24';
+const PLAY_CELL_BG  = '#2A2D35';
+const PLAY_GAP      = Math.max(3, 4); // gap between tiles in px
+
+function roundRect(ctx, x, y, w, h, r) {
+  r = Math.min(r, w/2, h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y); ctx.arcTo(x+w, y, x+w, y+r, r);
+  ctx.lineTo(x+w, y+h-r); ctx.arcTo(x+w, y+h, x+w-r, y+h, r);
+  ctx.lineTo(x+r, y+h); ctx.arcTo(x, y+h, x, y+h-r, r);
+  ctx.lineTo(x, y+r); ctx.arcTo(x, y, x+r, y, r);
+  ctx.closePath();
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const fontSize = Math.max(10, CELL * 0.38);
+  const gap = PLAY_GAP;
+  const cr = Math.max(6, CELL * 0.18);
+
+  const isDesign = mode === 'design';
+  const bgColor      = isDesign ? '#EDEEF2' : PLAY_BG;
+  const cellBgColor  = isDesign ? '#FFFFFF' : PLAY_CELL_BG;
+
+  // Background
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const activeRects = isDesign ? designRects : playRects;
+
+  // Track covered cells
+  const coveredBy = new Array(ROWS).fill(null).map(() => new Array(COLS).fill(null));
+  activeRects.forEach((rect, i) => {
+    const { r1, c1, r2, c2 } = rectCoords(rect);
+    for (let r = r1; r <= r2; r++)
+      for (let c = c1; c <= c2; c++)
+        coveredBy[r][c] = i;
+  });
+
+  // Draw base tiles for uncovered cells
+  ctx.fillStyle = cellBgColor;
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (coveredBy[r][c] === null) {
+        const x = c*CELL + gap, y = r*CELL + gap;
+        roundRect(ctx, x, y, CELL - gap*2, CELL - gap*2, cr);
+        ctx.fill();
+      }
+    }
+  }
+
+  // Draw committed rects as rounded coloured panels
+  activeRects.forEach(rect => {
+    const { r1, c1, r2, c2 } = rectCoords(rect);
+    const x = c1*CELL + gap, y = r1*CELL + gap;
+    const w = (c2-c1+1)*CELL - gap*2, h = (r2-r1+1)*CELL - gap*2;
+    const err = !isDesign && rectError(rect);
+
+    if (err) {
+      ctx.fillStyle = 'rgba(180,45,35,0.55)';
+      roundRect(ctx, x, y, w, h, cr * 1.5); ctx.fill();
+      ctx.strokeStyle = 'rgba(220,60,50,0.9)';
+      ctx.lineWidth = 2;
+      roundRect(ctx, x+1, y+1, w-2, h-2, cr * 1.5); ctx.stroke();
+    } else {
+      ctx.fillStyle = rect.color + (isDesign ? 'DD' : 'CC');
+      roundRect(ctx, x, y, w, h, cr * 1.5); ctx.fill();
+    }
+  });
+
+  // Drag preview
+  if (drag) {
+    const { r1, c1, r2, c2 } = rectCoords(drag);
+    const x = c1*CELL + gap, y = r1*CELL + gap;
+    const w = (c2-c1+1)*CELL - gap*2, h = (r2-r1+1)*CELL - gap*2;
+    const color = COLORS[activeRects.length % COLORS.length];
+    ctx.fillStyle = color + '77';
+    roundRect(ctx, x, y, w, h, cr * 1.5); ctx.fill();
+    ctx.strokeStyle = isDesign ? '#4A6FA5' : color;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 3]);
+    roundRect(ctx, x+1, y+1, w-2, h-2, cr * 1.5); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Only show area count in design mode
+    if (isDesign) {
+      ctx.fillStyle = '#1A1A2E';
+      ctx.font = `700 ${fontSize}px Inter, sans-serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(rectArea(drag), x + w/2, y + h/2);
+    }
+  }
+
+  // Numbers
+  ctx.font = `700 ${fontSize}px Inter, sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+
+  if (isDesign) {
+    // Show area number on each committed rect
+    designRects.forEach(rect => {
+      const { r1, c1, r2, c2 } = rectCoords(rect);
+      ctx.fillStyle = '#1A1A2ECC';
+      ctx.fillText(rectArea(rect), (c1+(c2-c1)/2+0.5)*CELL, (r1+(r2-r1)/2+0.5)*CELL);
+    });
+  } else {
+    // Show clue numbers in white, no circles
+    puzzle && puzzle.clues.forEach(clue => {
+      const cx = (clue.c + 0.5)*CELL, cy = (clue.r + 0.5)*CELL;
+      const containing = playRects.find(rect => {
+        const { r1, c1, r2, c2 } = rectCoords(rect);
+        return clue.r >= r1 && clue.r <= r2 && clue.c >= c1 && clue.c <= c2;
+      });
+      const hasError = containing && rectError(containing);
+      ctx.fillStyle = hasError ? '#FF8080' : 'rgba(255,255,255,0.95)';
+      ctx.fillText(clue.area, cx, cy);
+    });
+  }
+}
+
+// Returns an error string if a play rect is invalid, null if ok
+function rectError(rect) {
+  if (!puzzle) return null;
+  const area = rectArea(rect);
+  const { r1, c1, r2, c2 } = rectCoords(rect);
+  // Find clues inside this rect
+  const inside = puzzle.clues.filter(clue =>
+    clue.r >= r1 && clue.r <= r2 && clue.c >= c1 && clue.c <= c2
+  );
+  if (inside.length === 0) return 'no clue inside';
+  if (inside.length > 1)   return 'multiple clues';
+  if (inside[0].area !== area) return 'wrong area';
+  return null;
+}
+
+// ── Touch / Mouse ──────────────────────────────────────────────────────────────
+function getCanvasPos(clientX, clientY) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  return { x: (clientX - rect.left)*scaleX, y: (clientY - rect.top)*scaleY };
+}
+
+let dragStartCell = null; // track start cell to detect taps
+
+function onStart(clientX, clientY) {
+  const { x, y } = getCanvasPos(clientX, clientY);
+  const { r, c } = cellAt(x, y);
+  if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return;
+  dragStartCell = { r, c };
+  drag = { r1:r, c1:c, r2:r, c2:c };
+  draw();
+}
+
+function onMove(clientX, clientY) {
+  if (!drag) return;
+  const { x, y } = getCanvasPos(clientX, clientY);
+  const { r, c } = cellAt(x, y);
+  drag.r2 = Math.max(0, Math.min(ROWS-1, r));
+  drag.c2 = Math.max(0, Math.min(COLS-1, c));
+  draw();
+}
+
+function onEnd() {
+  if (!drag) return;
+  const endCell = { r: drag.r2, c: drag.c2 };
+  const isTap = dragStartCell &&
+    dragStartCell.r === endCell.r &&
+    dragStartCell.c === endCell.c;
+  dragStartCell = null;
+
+  // In design mode, a tap on an existing rect removes it
+  if (mode === 'design' && isTap) {
+    const { r, c } = endCell;
+    const idx = designRects.findIndex(rect => {
+      const { r1, c1, r2, c2 } = rectCoords(rect);
+      return r >= r1 && r <= r2 && c >= c1 && c <= c2;
+    });
+    drag = null;
+    if (idx !== -1) {
+      designRects.splice(idx, 1);
+      updateCoverage();
+      draw();
+      return;
+    }
+    // No existing rect — fall through to draw a 1-cell rect
+  }
+
+  // In play mode, a tap on an existing rect removes it
+  if (mode === 'play' && isTap) {
+    const { r, c } = endCell;
+    const idx = playRects.findIndex(rect => {
+      const { r1, c1, r2, c2 } = rectCoords(rect);
+      return r >= r1 && r <= r2 && c >= c1 && c <= c2;
+    });
+    drag = null;
+    if (idx !== -1) {
+      playRects.splice(idx, 1);
+      if (playRects.length > 0) validatePlay();
+      else updatePlayStatus('Draw rectangles to solve');
+      draw();
+      return;
+    }
+  }
+
+  const rects = mode === 'design' ? designRects : playRects;
+  const rect = { ...drag, color: COLORS[rects.length % COLORS.length] };
+  drag = null;
+
+  if (overlaps(rect, rects)) {
+    showToast('Rectangles can\'t overlap');
+  } else {
+    rects.push(rect);
+    if (mode === 'design') updateCoverage();
+    else validatePlay();
+  }
+  draw();
+}
+
+// Mouse
+canvas.addEventListener('mousedown',  e => { e.preventDefault(); onStart(e.clientX, e.clientY); });
+canvas.addEventListener('mousemove',  e => { e.preventDefault(); onMove(e.clientX, e.clientY); });
+canvas.addEventListener('mouseup',    e => { e.preventDefault(); onEnd(); });
+canvas.addEventListener('mouseleave', e => { if (drag) { drag=null; draw(); } });
+
+// Touch
+canvas.addEventListener('touchstart', e => { e.preventDefault(); onStart(e.touches[0].clientX, e.touches[0].clientY); }, {passive:false});
+canvas.addEventListener('touchmove',  e => { e.preventDefault(); onMove(e.touches[0].clientX, e.touches[0].clientY); }, {passive:false});
+canvas.addEventListener('touchend',   e => { e.preventDefault(); onEnd(); }, {passive:false});
+
+// ── Design helpers ─────────────────────────────────────────────────────────────
+function updateCoverage() {
+  const total = COLS * ROWS;
+  const covered = designRects.reduce((s, r) => s + rectArea(r), 0);
+  const pct = Math.round(covered / total * 100);
+  document.getElementById('coverage-fill').style.width = pct + '%';
+  document.getElementById('coverage-label').textContent =
+    covered === total ? '✓ All cells covered — ready to share!' :
+    `${covered} / ${total} cells covered`;
+  document.getElementById('coverage-fill').style.background =
+    covered === total ? 'var(--success)' : 'var(--accent)';
+}
+
+function undoLast() {
+  if (!designRects.length) return;
+  designRects.pop();
+  updateCoverage();
+  draw();
+}
+
+function clearAll() {
+  designRects = [];
+  updateCoverage();
+  draw();
+}
+
+// ── Play helpers ───────────────────────────────────────────────────────────────
+function undoPlay() {
+  if (!playRects.length) return;
+  playRects.pop();
+  if (playRects.length > 0) validatePlay();
+  else updatePlayStatus('Draw rectangles to solve');
+  draw();
+}
+
+function clearPlay() {
+  playRects = [];
+  updatePlayStatus('Draw rectangles to solve');
+  draw();
+}
+
+function updatePlayStatus(msg, type='incomplete') {
+  const el = document.getElementById('play-status');
+  el.textContent = msg;
+  el.className = `status-bar show ${type}`;
+}
+
+function validatePlay() {
+  if (!puzzle) return;
+
+  const errors = playRects.map(r => rectError(r)).filter(Boolean);
+  const total = COLS * ROWS;
+  const covered = playRects.reduce((s, r) => s + rectArea(r), 0);
+  const remaining = total - covered;
+
+  if (errors.length > 0) {
+    // Find the first bad rect to give a specific message
+    const badRect = playRects.find(r => rectError(r));
+    const err = rectError(badRect);
+    const msg = err === 'wrong area'      ? '✗ That rectangle\'s size doesn\'t match its clue' :
+                err === 'multiple clues'  ? '✗ A rectangle can only contain one number' :
+                                           '✗ A rectangle must contain a number';
+    updatePlayStatus(msg, 'wrong');
+    // Haptic feedback on supported devices
+    if (navigator.vibrate) navigator.vibrate(40);
+  } else if (remaining > 0) {
+    updatePlayStatus(`${remaining} cell${remaining===1?'':'s'} remaining…`);
+  } else {
+    // All covered, no errors — solved!
+    updatePlayStatus('🎉 Puzzle solved!', 'complete');
+    if (navigator.vibrate) navigator.vibrate([40, 60, 80]);
+    showToast('Congratulations!');
+  }
+}
+
+function checkSolution() { validatePlay(); }
+
+// ── Share / Encode ─────────────────────────────────────────────────────────────
+function encodePuzzle() {
+  const clues = designRects.map(rect => {
+    const { r1, c1, r2, c2 } = rectCoords(rect);
+    return `${Math.floor((r1+r2)/2)},${Math.floor((c1+c2)/2)},${rectArea(rect)}`;
+  });
+  return `${COLS}x${ROWS}:${clues.join(';')}`;
+}
+
+function decodePuzzle(str) {
+  try {
+    const [sizeStr, cluesStr] = str.split(':');
+    const [cols, rows] = sizeStr.split('x').map(Number);
+    const clues = cluesStr ? cluesStr.split(';').map(s => {
+      const [r, c, area] = s.split(',').map(Number);
+      return { r, c, area };
+    }) : [];
+    return { cols, rows, clues };
+  } catch { return null; }
+}
+
+function sharePuzzle() {
+  const covered = designRects.reduce((s, r) => s + rectArea(r), 0);
+  if (covered < COLS * ROWS) { showToast('Cover all cells first!'); return; }
+  const url = `${location.origin}${location.pathname}#${encodeURIComponent(encodePuzzle())}`;
+  document.getElementById('share-url').value = url;
+  document.getElementById('share-sheet').classList.add('open');
+}
+
+function copyLink() {
+  const url = document.getElementById('share-url').value;
+  navigator.clipboard.writeText(url).then(() => {
+    showToast('Copied!');
+    closeShare();
+  });
+}
+
+function closeShare(e) {
+  if (e && e.target !== document.getElementById('share-sheet')) return;
+  document.getElementById('share-sheet').classList.remove('open');
+}
+
+// ── Settings sheet ─────────────────────────────────────────────────────────────
+function openSettings() {
+  document.getElementById('settings-sheet').classList.add('open');
+}
+function closeSettings(e) {
+  if (e && e.target !== document.getElementById('settings-sheet')) return;
+  document.getElementById('settings-sheet').classList.remove('open');
+}
+function applySize() {
+  COLS = parseInt(document.getElementById('cols-slider').value);
+  ROWS = parseInt(document.getElementById('rows-slider').value);
+  designRects = []; playRects = []; puzzle = null;
+  closeSettings();
+  resize();
+  updateCoverage();
+}
+
+function applyDarkMode(isDark) {
+  document.querySelector('.topbar').classList.toggle('dark', isDark);
+  document.querySelector('.canvas-area').classList.toggle('dark', isDark);
+  document.querySelector('.bottom-bar').classList.toggle('dark', isDark);
+  document.getElementById('grid').classList.toggle('dark', isDark);
+}
+
+// ── Mode switch ────────────────────────────────────────────────────────────────
+function setMode(m) {
+  if (m === 'play' && !puzzle) {
+    if (!designRects.length) { showToast('Design a puzzle first!'); return; }
+    puzzle = decodePuzzle(encodePuzzle());
+    playRects = [];
+  }
+  mode = m;
+  document.getElementById('tab-design').classList.toggle('active', m==='design');
+  document.getElementById('tab-play').classList.toggle('active', m==='play');
+  document.getElementById('design-actions').style.display = m==='design' ? 'flex' : 'none';
+  document.getElementById('play-actions').style.display   = m==='play'   ? 'flex' : 'none';
+  document.getElementById('coverage-bar').style.display   = m==='design' ? '' : 'none';
+  document.getElementById('settings-btn').style.display   = m==='design' ? '' : 'none';
+  const ps = document.getElementById('play-status');
+  ps.className = m==='play' ? 'status-bar show incomplete' : 'status-bar';
+  if (m==='play') ps.textContent = 'Draw rectangles to solve';
+  applyDarkMode(m === 'play');
+  draw();
+}
+
+// ── Load from URL ──────────────────────────────────────────────────────────────
+function loadFromHash() {
+  const hash = decodeURIComponent(location.hash.slice(1));
+  if (!hash) return false;
+  const p = decodePuzzle(hash);
+  if (!p || isNaN(p.cols) || isNaN(p.rows)) return false;
+  COLS = p.cols; ROWS = p.rows;
+  document.getElementById('cols-slider').value = COLS;
+  document.getElementById('rows-slider').value = ROWS;
+  document.getElementById('cols-val').textContent = COLS;
+  document.getElementById('rows-val').textContent = ROWS;
+  puzzle = p; designRects = []; playRects = [];
+  mode = 'play';
+  document.getElementById('tab-design').classList.remove('active');
+  document.getElementById('tab-play').classList.add('active');
+  document.getElementById('design-actions').style.display = 'none';
+  document.getElementById('play-actions').style.display = 'flex';
+  document.getElementById('coverage-bar').style.display = 'none';
+  document.getElementById('settings-btn').style.display = 'none';
+  document.getElementById('play-status').className = 'status-bar show incomplete';
+  applyDarkMode(true);
+  return true;
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ── Boot ───────────────────────────────────────────────────────────────────────
+const fromURL = loadFromHash();
+resize();
+if (!fromURL) updateCoverage();
+</script>
+</body>
+</html>
