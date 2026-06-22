@@ -79,6 +79,7 @@ html, body {
 }
 
 .topbar-right { display: flex; gap: 8px; }
+.topbar .mode-tabs { position: absolute; left: 50%; transform: translateX(-50%); }
 
 .icon-btn {
   width: 36px; height: 36px;
@@ -872,6 +873,8 @@ function loadFromHash() {
   document.getElementById('settings-btn').style.display = 'none';
   document.getElementById('play-status').className = 'status-bar show incomplete';
   applyDarkMode(true);
+  document.getElementById('tab-design').style.display = 'none';
+  document.querySelector('.mode-tabs').style.display = 'none';
   return true;
 }
 
